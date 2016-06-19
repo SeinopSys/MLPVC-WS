@@ -3,16 +3,50 @@
 process.title = 'MLPVC-WS';
 
 var PORT = 8667,
-	Server = require('socket.io'),
-	io = Server(PORT),
 	pg = require('pg'),
 	sha1 = require('sha1'),
 	_ = require('underscore'),
 	config = require('./config'),
 	Database = new pg.Client('postgres://'+config.DB_USER+':'+config.DB_PASS+'@'+config.DB_HOST+'/mlpvc-rr'),
-	moment = require('moment-timezone');
+	moment = require('moment-timezone'),
+	Server = require('socket.io'),
+	express = require('express'),
+	app = express(),
+	LEX = require('letsencrypt-express'),
+	LEX_PATH = __dirname+'/letsencrypt',
+	https = require('http2'),
+	cors = require('cors'),
+	mkdirp = require('mkdirp');
 
-//io.origins('mlpvc-rr.ml,mlpvc-rr.lc');
+mkdirp(LEX_PATH, function(err) {
+	if (err){
+		console.log('Failed to create LEX config dir');
+		process.exit();
+	}
+});
+
+app.use(cors());
+
+app.get('/', function (req, res) {
+  res.sendStatus(403);
+});
+
+var lex = LEX.create({
+	configDir: LEX_PATH,
+	letsencrypt: null,
+	approveRegistration: function (hostname, cb) {
+		cb(null, {
+			domains: ['ws.mlpvc-rr.ml'],
+			email: 'seinopsys@gmail.com',
+			agreeTos: true
+		});
+	}
+});
+
+var server = https.createServer(lex.httpsOptions, LEX.createAcmeResponder(lex, app));
+server.listen(PORT);
+var io = Server.listen(server);
+
 moment.locale('en');
 moment.tz.add('Europe/Budapest|CET CEST|-10 -20|01010101010101010101010|1BWp0 1qM0 WM0 1qM0 WM0 1qM0 11A0 1o00 11A0 1o00 11A0 1o00 11A0 1qM0 WM0 1qM0 WM0 1qM0 11A0 1o00 11A0 1o00|11e6');
 moment.tz.setDefault('Europe/Budapest');
