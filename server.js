@@ -3,6 +3,7 @@
 process.title = 'MLPVC-WS';
 
 var PORT = 8667,
+	fs = require('fs'),
 	pg = require('pg'),
 	sha1 = require('sha1'),
 	_ = require('underscore'),
@@ -25,25 +26,40 @@ mkdirp(LEX_PATH, function(err) {
 	}
 });
 
-app.use(cors());
+// CORS
+app.use(cors(function(req, callback){
+	var corsOptions = { origin: false };
+	if (/^https:\/\/mlpvc-rr.(ml|lc)/.test(req.header('Origin')))
+		corsOptions.origin = true;
+	callback(null, corsOptions);
+}));
 
 app.get('/', function (req, res) {
   res.sendStatus(403);
 });
 
-var lex = LEX.create({
-	configDir: LEX_PATH,
-	letsencrypt: null,
-	approveRegistration: function (hostname, cb) {
-		cb(null, {
-			domains: ['ws.mlpvc-rr.ml'],
-			email: 'seinopsys@gmail.com',
-			agreeTos: true
-		});
-	}
-});
+var server;
+if (config.LOCALHOST === true){
+	server = https.createServer({
+		cert: fs.readFileSync(config.SSL_CERT),
+		key: fs.readFileSync(config.SSL_KEY),
+	}, app);
+}
+else {
+	var lex = LEX.create({
+		configDir: LEX_PATH,
+		letsencrypt: null,
+		approveRegistration: function (hostname, cb) {
+			cb(null, {
+				domains: ['ws.mlpvc-rr.ml'],
+				email: 'seinopsys@gmail.com',
+				agreeTos: true
+			});
+		}
+	});
 
-var server = https.createServer(lex.httpsOptions, LEX.createAcmeResponder(lex, app));
+	server = https.createServer(lex.httpsOptions, LEX.createAcmeResponder(lex, app));
+}
 server.listen(PORT);
 var io = Server.listen(server);
 
@@ -97,7 +113,7 @@ function json_decode(data){
 Database.connect(function(err) {
 	if (err !== null) return console.log(err);
 
-	log('@ [Database] Connection successful');
+	log('[Database] Connection successful');
 });
 Database.on('error',function(err){
 	console.log(err);
@@ -108,30 +124,43 @@ io.on('connection', function(socket){
 	//log('> Incoming connection');
 	var User = {},
 		userlog = function(msg){ log('['+User.id+'] '+msg) };
-	socket.on('auth', function(data, fn){
-		data = json_decode(data);
 
-		var access = data.access;
-		if (access === config.WS_SERVER_KEY){
-			User = {id:'PHP-SERVER',role: 'server'};
-			//userlog('> Connected');
-			return respond(fn, 'Authenticated as PHP Server');
-		}
+	// Authentication
+	if (!socket.handshake.headers.cookie && socket.handshake.headers.cookie.length)
+		return socket.emit('rip');
+	var cookieArray = socket.handshake.headers.cookie.split('; '),
+		cookies = {};
+	for (var i=0; i<cookieArray.length; i++){
+		var split = cookieArray[i].split('=');
+		cookies[split[0]] = split[1];
+	}
+
+	var access = cookies.access;
+	if (access === config.WS_SERVER_KEY){
+		User = { id: 'PHP-SERVER', role: 'server'};
+		userlog('> Authenticated');
+	}
+	else {
 		var token = sha1(access);
 		Database.query('SELECT u.* FROM users u LEFT JOIN sessions s ON s.user = u.id WHERE s.token = $1', [token], queryhandle(function(result){
 			if (typeof result[0] !== 'object')
-				return respond(fn, 'Authentication failed');
+				return socket.emit('rip');
 
 			User = result[0];
-			respond(fn, 'Authenticated as '+User.name, 1);
 			socket.join(User.id);
+
+			userlog('> Authenticated');
+			socket.emit('auth', _respond({ name: User.name }));
 
 			pleaseNotify(io.in(User.id), User.id);
 		}));
-	});
+	}
+
 	socket.on('notify-pls',function(data, fn){
 		if (User.role !== 'server')
 			return respond(fn);
+
+		userlog('> Sent notification count to '+data.user);
 
 		data = json_decode(data);
 		pleaseNotify(io.in(data.user), data.user);
@@ -143,6 +172,8 @@ io.on('connection', function(socket){
 		data = json_decode(data);
 		Database.query('UPDATE notifications SET read_at = NOW() WHERE id = $1', [data.nid], queryhandle(function(){
 
+			userlog('> Marked notification &'+data.nid+' read');
+
 			Database.query('SELECT u.id FROM users u LEFT JOIN notifications n ON n.user = u.id WHERE n.id = $1', [data.nid], queryhandle(function(result){
 				var userid = result[0].id;
 
@@ -151,6 +182,6 @@ io.on('connection', function(socket){
 		}));
 	});
 	socket.on('disconnect', function(){
-		//userlog('> Disconnected');
+		userlog('> Disconnected');
 	});
 });
