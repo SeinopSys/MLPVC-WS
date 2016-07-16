@@ -140,6 +140,8 @@ io.on('connection', function(socket){
 		User = { id: 'PHP-SERVER', role: 'server'};
 		userlog('> Authenticated');
 	}
+	else if (typeof access !== 'string' && !access.length)
+		 return socket.emit('rip');
 	else {
 		var token = sha1(access);
 		Database.query('SELECT u.* FROM users u LEFT JOIN sessions s ON s.user = u.id WHERE s.token = $1', [token], queryhandle(function(result){
