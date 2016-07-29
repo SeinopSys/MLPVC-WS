@@ -7,5 +7,5 @@ module.exports = {
 	// For development only
 	LOCALHOST: true,
 	SSL_CERT: "/path/to/ssl.crt",
-	SSL_KEY: "path/to/ssl.key",
+	SSL_KEY: "/path/to/ssl.key",
 };
