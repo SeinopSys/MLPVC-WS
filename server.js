@@ -13,18 +13,8 @@ var PORT = 8667,
 	Server = require('socket.io'),
 	express = require('express'),
 	app = express(),
-	LEX = require('letsencrypt-express'),
-	LEX_PATH = __dirname+'/letsencrypt',
 	https = require('http2'),
-	cors = require('cors'),
-	mkdirp = require('mkdirp');
-
-mkdirp(LEX_PATH, function(err) {
-	if (err){
-		console.log('Failed to create LEX config dir');
-		process.exit();
-	}
-});
+	cors = require('cors');
 
 // CORS
 app.use(cors(function(req, callback){
@@ -46,6 +36,15 @@ if (config.LOCALHOST === true){
 	}, app);
 }
 else {
+	var mkdirp = require('mkdirp'),
+		LEX = require('letsencrypt-express'),
+		LEX_PATH = __dirname+'/letsencrypt';
+	mkdirp(LEX_PATH, function(err) {
+		if (err){
+			console.log('Failed to create LEX config dir');
+			process.exit();
+		}
+	});
 	var lex = LEX.create({
 		configDir: LEX_PATH,
 		letsencrypt: null,
