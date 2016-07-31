@@ -139,7 +139,7 @@ io.on('connection', function(socket){
 		User = { id: 'PHP-SERVER', role: 'server'};
 		userlog('> Authenticated');
 	}
-	else if (typeof access !== 'string' && !access.length)
+	else if (typeof access !== 'string' || !access.length)
 		 return socket.emit('rip');
 	else {
 		var token = sha1(access);
