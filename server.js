@@ -171,7 +171,7 @@ io.on('connection', function(socket){
 			return respond(fn);
 
 		data = json_decode(data);
-		Database.query('UPDATE notifications SET read_at = NOW() WHERE id = $1', [data.nid], queryhandle(function(){
+		Database.query('UPDATE notifications SET read_at = NOW(), read_action = $2 WHERE id = $1', [data.nid, data.action], queryhandle(function(){
 
 			userlog('> Marked notification &'+data.nid+' read');
 
