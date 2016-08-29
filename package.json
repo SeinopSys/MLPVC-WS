@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "Websocket server for handling instant notifications on MLPVC-RR",
   "dependencies": {
-    "cors": "^2.7.1",
+    "cors": "^2.8.0",
     "express": "^4.14.0",
     "http2": "^3.3.4",
-    "letsencrypt-express": "^1.1.5",
+    "letsencrypt-express": "^1.2.0",
     "mkdirp": "^0.5.1",
     "moment-timezone": "^0.3.1",
     "pg": "^5.1.0",
