@@ -36,28 +36,13 @@ if (config.LOCALHOST === true){
 	}, app);
 }
 else {
-	var mkdirp = require('mkdirp'),
-		LEX = require('letsencrypt-express'),
-		LEX_PATH = __dirname+'/letsencrypt';
-	mkdirp(LEX_PATH, function(err) {
-		if (err){
-			console.log('Failed to create LEX config dir');
-			process.exit();
-		}
+	var lex = require('letsencrypt-express').create({
+		server: 'https://acme-v01.api.letsencrypt.org/directory',
+		email: 'seinopsys@gmail.com',
+		agreeTos: true,
+		approveDomains: [ 'ws.mlpvc-rr.ml'],
 	});
-	var lex = LEX.create({
-		configDir: LEX_PATH,
-		letsencrypt: null,
-		approveRegistration: function (hostname, cb) {
-			cb(null, {
-				domains: ['ws.mlpvc-rr.ml'],
-				email: 'seinopsys@gmail.com',
-				agreeTos: true
-			});
-		}
-	});
-
-	server = https.createServer(lex.httpsOptions, LEX.createAcmeResponder(lex, app));
+	server = https.createServer(lex.httpsOptions, lex.middleware(app));
 }
 server.listen(PORT);
 var io = Server.listen(server);
