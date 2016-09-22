@@ -95,7 +95,10 @@ function json_decode(data){
 }
 
 Database.connect(function(err) {
-	if (err !== null) return console.log(err);
+	if (err !== null){
+		log('[Database] Connection failed, exiting ('+err+')');
+		return process.exit();
+	}
 
 	log('[Database] Connection successful');
 });
