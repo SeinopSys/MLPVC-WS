@@ -19,13 +19,13 @@ var PORT = 8667,
 // CORS
 app.use(cors(function(req, callback){
 	var corsOptions = { origin: false };
-	if (/^https:\/\/mlpvc-rr.(ml|lc)/.test(req.header('Origin')))
+	if (/^https:\/\/mlpvc-rr\.(ml|lc)/.test(req.header('Origin')))
 		corsOptions.origin = true;
 	callback(null, corsOptions);
 }));
 
 app.get('/', function (req, res) {
-  res.sendStatus(403);
+	res.sendStatus(403);
 });
 
 var server;
