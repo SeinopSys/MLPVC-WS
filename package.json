@@ -7,8 +7,8 @@
     "express": "^4.14.0",
     "http2": "^3.3.4",
     "letsencrypt-express": "^2.0.5",
-    "moment-timezone": "^0.3.1",
-    "pg": "^5.1.0",
+    "moment-timezone": "^0.5.9",
+    "pg": "^6.1.0",
     "sha1": "^1.1.1",
     "socket.io": "^1.6.0",
     "underscore": "^1.8.3"
