@@ -2,23 +2,26 @@
 /* global process,console */
 process.title = 'MLPVC-WS';
 
-var PORT = 8667,
+const
+	PORT = 8667,
 	fs = require('fs'),
 	pg = require('pg'),
 	sha1 = require('sha1'),
 	_ = require('underscore'),
 	config = require('./config'),
-	Database = new pg.Client('postgres://'+config.DB_USER+':'+config.DB_PASS+'@'+config.DB_HOST+'/mlpvc-rr'),
 	moment = require('moment-timezone'),
 	Server = require('socket.io'),
 	express = require('express'),
-	app = express(),
 	https = require('http2'),
-	cors = require('cors');
+	cors = require('cors'),
+	POST_UPDATES_CHANNEL = 'post-updates';
+
+let Database = new pg.Client('postgres://'+config.DB_USER+':'+config.DB_PASS+'@'+config.DB_HOST+'/mlpvc-rr'),
+	app = express();
 
 // CORS
 app.use(cors(function(req, callback){
-	var corsOptions = { origin: false };
+	let corsOptions = { origin: false };
 	if (/^https:\/\/mlpvc-rr\.(ml|lc)/.test(req.header('Origin')))
 		corsOptions.origin = true;
 	callback(null, corsOptions);
@@ -28,7 +31,7 @@ app.get('/', function (req, res) {
 	res.sendStatus(403);
 });
 
-var server;
+let server;
 if (config.LOCALHOST === true){
 	server = https.createServer({
 		cert: fs.readFileSync(config.SSL_CERT),
@@ -36,7 +39,7 @@ if (config.LOCALHOST === true){
 	}, app);
 }
 else {
-	var lex = require('letsencrypt-express').create({
+	let lex = require('letsencrypt-express').create({
 		server: 'https://acme-v01.api.letsencrypt.org/directory',
 		email: 'seinopsys@gmail.com',
 		agreeTos: true,
@@ -45,7 +48,7 @@ else {
 	server = https.createServer(lex.httpsOptions, lex.middleware(app));
 }
 server.listen(PORT);
-var io = Server.listen(server);
+let io = Server.listen(server);
 
 moment.locale('en');
 moment.tz.add('Europe/Budapest|CET CEST|-10 -20|01010101010101010101010|1BWp0 1qM0 WM0 1qM0 WM0 1qM0 11A0 1o00 11A0 1o00 11A0 1o00 11A0 1qM0 WM0 1qM0 WM0 1qM0 11A0 1o00 11A0 1o00|11e6');
@@ -54,7 +57,7 @@ function log(text){
 	console.log(moment().format('YYYY-MM-DD HH:mm:ss.SSS')+' | ' + text);
 }
 function _respond(message, status, extra){
-	var response;
+	let response;
 	if (message === true)
 		response = {status:true};
 	else if (_.isObject(message) && !status && !extra){
@@ -87,12 +90,24 @@ function pleaseNotify(socket, userid){
 		if (typeof result[0] !== 'object')
 			return;
 
-		socket.emit('notif-cnt', _respond({ cnt:parseInt(result[0].cnt,10) }));
+		socket.emit('notif-cnt', _respond({ cnt: parseInt(result[0].cnt,10) }));
 	}));
 }
 function json_decode(data){
 	return typeof data === 'string' ? JSON.parse(data) : data;
 }
+function findAuthCookie(socket){
+	if (!socket.handshake.headers.cookie && socket.handshake.headers.cookie.length)
+		return;
+	let cookieArray = socket.handshake.headers.cookie.split('; '),
+		cookies = {};
+	for (let i=0; i<cookieArray.length; i++){
+		let split = cookieArray[i].split('=');
+		cookies[split[0]] = split[1];
+	}
+	return cookies.access;
+}
+const getGuestID = (socket) => 'Guest#'+socket.id;
 
 Database.connect(function(err) {
 	if (err !== null){
@@ -109,41 +124,48 @@ Database.on('error',function(err){
 });
 io.on('connection', function(socket){
 	//log('> Incoming connection');
-	var User = {},
-		userlog = function(msg){ log('['+User.id+'] '+msg) };
+	let User = { id: getGuestID(socket) },
+		inrooms = {},
+		joinroom = room => {
+			socket.join(room);
+			inrooms[room] = true;
+		},
+		leaveroom = room => {
+			socket.leave(room);
+			delete inrooms[room];
+		},
+		isGuest = () => typeof User.role === 'undefined',
+		userlog = function(msg){ log('['+User.id+'] '+msg) },
+		authByCookie = () => {
+			let access = findAuthCookie(socket);
+			if (access === config.WS_SERVER_KEY){
+				User = { id: 'Web Server', role: 'server'};
+				userlog('> Authenticated');
+			}
+			else if (typeof access === 'string' && access.length){
+				let token = sha1(access);
+				Database.query('SELECT u.* FROM users u LEFT JOIN sessions s ON s.user = u.id WHERE s.token = $1', [token], queryhandle(function(result){
+					if (typeof result[0] !== 'object'){
+						socket.disconnect();
+						return;
+					}
 
-	// Authentication
-	if (!socket.handshake.headers.cookie && socket.handshake.headers.cookie.length)
-		return socket.emit('rip');
-	var cookieArray = socket.handshake.headers.cookie.split('; '),
-		cookies = {};
-	for (var i=0; i<cookieArray.length; i++){
-		var split = cookieArray[i].split('=');
-		cookies[split[0]] = split[1];
-	}
+					User = result[0];
 
-	var access = cookies.access;
-	if (access === config.WS_SERVER_KEY){
-		User = { id: 'PHP-SERVER', role: 'server'};
-		userlog('> Authenticated');
-	}
-	else if (typeof access !== 'string' || !access.length)
-		 return socket.emit('rip');
-	else {
-		var token = sha1(access);
-		Database.query('SELECT u.* FROM users u LEFT JOIN sessions s ON s.user = u.id WHERE s.token = $1', [token], queryhandle(function(result){
-			if (typeof result[0] !== 'object')
-				return socket.emit('rip');
+					let isServer = User.role === 'server';
+					if (!isServer){
+						socket.join(User.id);
+						userlog('> Authenticated');
+					}
+					socket.emit('auth', _respond({ name: User.name }));
+					if (!isServer)
+						pleaseNotify(socket, User.id);
+				}));
+			}
+			else socket.emit('auth-guest');
+		};
 
-			User = result[0];
-			socket.join(User.id);
-
-			userlog('> Authenticated');
-			socket.emit('auth', _respond({ name: User.name }));
-
-			pleaseNotify(io.in(User.id), User.id);
-		}));
-	}
+	authByCookie();
 
 	socket.on('notify-pls',function(data, fn){
 		if (User.role !== 'server')
@@ -164,13 +186,72 @@ io.on('connection', function(socket){
 			userlog('> Marked notification &'+data.nid+' read');
 
 			Database.query('SELECT u.id FROM users u LEFT JOIN notifications n ON n.user = u.id WHERE n.id = $1', [data.nid], queryhandle(function(result){
-				var userid = result[0].id;
+				let userid = result[0].id;
 
 				pleaseNotify(io.in(userid), userid);
 			}));
 		}));
 	});
+	socket.on('notify-pls',function(data, fn){
+		if (User.role !== 'server')
+			return respond(fn);
+
+		userlog('> Sent notification count to '+data.user);
+
+		data = json_decode(data);
+		pleaseNotify(io.in(data.user), data.user);
+	});
+	socket.on('unauth',function(data, fn){
+		if (isGuest())
+			return respond(fn);
+
+		let oldid = User.id;
+		User = { id: getGuestID(socket) };
+		userlog(`> Unauthenticated (was ${oldid})`);
+		respond(fn, true);
+		socket.emit('auth-guest');
+	});
+	socket.on('status',function(data, fn){
+		if (config.LOCALHOST !== true)
+			return respond(fn);
+
+		respond(fn, { User, rooms: Object.keys(inrooms) });
+	});
+	const postaction = (what) => function(data){
+		if (User.role !== 'server')
+			return respond(fn);
+
+		data = json_decode(data);
+		userlog(`> Post ${what.replace(/e?$/,'ed')} (${data.type}-${data.id})`);
+		io.in(POST_UPDATES_CHANNEL).emit('post-'+what,data);
+	};
+	socket.on('post-add',postaction('add'));
+	socket.on('post-update',postaction('update'));
+	socket.on('post-delete',postaction('delete'));
+	socket.on('post-updates',function(data, fn){
+		if (isGuest())
+			return respond(fn);
+
+		let action;
+		switch(data){
+			case "true":
+				joinroom(POST_UPDATES_CHANNEL);
+				action = 'Joined';
+			break;
+			case "false":
+				leaveroom(POST_UPDATES_CHANNEL);
+				action = 'Left';
+			break;
+			default: return;
+		}
+		let msg = action+' '+POST_UPDATES_CHANNEL+' notification channel';
+		userlog('> '+msg);
+		return respond(fn, msg, 1);
+	});
 	socket.on('disconnect', function(){
+		if (isGuest() || User.role === 'server')
+			return;
+
 		userlog('> Disconnected');
 	});
 });
