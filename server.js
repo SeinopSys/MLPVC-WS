@@ -229,7 +229,7 @@ io.on('connection', function(socket){
 	socket.on('post-update',postaction('update'));
 	socket.on('post-delete',postaction('delete'));
 	socket.on('post-updates',function(data, fn){
-		if (isGuest())
+		if (User.role === 'server')
 			return respond(fn);
 
 		let action;
