@@ -147,7 +147,7 @@ io.on('connection', function(socket){
 				let token = sha256hash(access);
 				Database.query('SELECT u.* FROM users u LEFT JOIN sessions s ON s.user = u.id WHERE s.token = $1', [token], queryhandle(function(result){
 					if (typeof result[0] !== 'object'){
-						socket.disconnect();
+						socket.emit('auth-guest');
 						return;
 					}
 
