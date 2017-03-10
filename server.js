@@ -6,7 +6,6 @@ const
 	PORT = 8667,
 	fs = require('fs'),
 	pg = require('pg'),
-	sha1 = require('sha1'),
 	_ = require('underscore'),
 	config = require('./config'),
 	moment = require('moment-timezone'),
@@ -14,6 +13,8 @@ const
 	express = require('express'),
 	https = require('http2'),
 	cors = require('cors'),
+	createHash = require('sha.js'),
+	sha256hash = data => createHash('sha256').update(data, 'utf8').digest('hex'),
 	POST_UPDATES_CHANNEL = 'post-updates';
 
 let Database = new pg.Client('postgres://'+config.DB_USER+':'+config.DB_PASS+'@'+config.DB_HOST+'/mlpvc-rr'),
@@ -39,7 +40,7 @@ if (config.LOCALHOST === true){
 	}, app);
 }
 else {
-	let lex = require('letsencrypt-express').create({
+	let lex = require('greenlock-express').create({
 		server: 'https://acme-v01.api.letsencrypt.org/directory',
 		email: 'seinopsys@gmail.com',
 		agreeTos: true,
@@ -143,7 +144,7 @@ io.on('connection', function(socket){
 				userlog('> Authenticated');
 			}
 			else if (typeof access === 'string' && access.length){
-				let token = sha1(access);
+				let token = sha256hash(access);
 				Database.query('SELECT u.* FROM users u LEFT JOIN sessions s ON s.user = u.id WHERE s.token = $1', [token], queryhandle(function(result){
 					if (typeof result[0] !== 'object'){
 						socket.disconnect();
