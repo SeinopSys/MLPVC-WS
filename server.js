@@ -98,7 +98,7 @@ function json_decode(data){
 	return typeof data === 'string' ? JSON.parse(data) : data;
 }
 function findAuthCookie(socket){
-	if (!socket.handshake.headers.cookie && socket.handshake.headers.cookie.length)
+	if (!socket.handshake.headers.cookie || !socket.handshake.headers.cookie.length)
 		return;
 	let cookieArray = socket.handshake.headers.cookie.split('; '),
 		cookies = {};
