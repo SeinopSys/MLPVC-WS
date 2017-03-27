@@ -15,7 +15,8 @@ const
 	cors = require('cors'),
 	createHash = require('sha.js'),
 	sha256hash = data => createHash('sha256').update(data, 'utf8').digest('hex'),
-	POST_UPDATES_CHANNEL = 'post-updates';
+	POST_UPDATES_CHANNEL = 'post-updates',
+	ENTRY_UPDATES_CHANNEL = 'entry-updates';
 
 let Database = new pg.Client('postgres://'+config.DB_USER+':'+config.DB_PASS+'@'+config.DB_HOST+'/mlpvc-rr'),
 	app = express();
@@ -230,7 +231,7 @@ io.on('connection', function(socket){
 	socket.on('post-update',postaction('update'));
 	socket.on('post-delete',postaction('delete'));
 	socket.on('post-break',postaction('break'));
-	socket.on('post-updates',function(data, fn){
+	socket.on(POST_UPDATES_CHANNEL,function(data, fn){
 		if (User.role === 'server')
 			return respond(fn);
 
@@ -246,12 +247,40 @@ io.on('connection', function(socket){
 			break;
 			default: return;
 		}
-		let msg = action+' '+POST_UPDATES_CHANNEL+' notification channel';
+		let msg = action+' '+POST_UPDATES_CHANNEL+' broadcast channel';
 		userlog('> '+msg);
 		return respond(fn, msg, 1);
 	});
+	socket.on(ENTRY_UPDATES_CHANNEL,function(data, fn){
+		if (User.role === 'server')
+			return respond(fn);
+
+		let action;
+		switch(data){
+			case "true":
+				joinroom(ENTRY_UPDATES_CHANNEL);
+				action = 'Joined';
+			break;
+			case "false":
+				leaveroom(ENTRY_UPDATES_CHANNEL);
+				action = 'Left';
+			break;
+			default: return;
+		}
+		let msg = action+' '+ENTRY_UPDATES_CHANNEL+' broadcast channel';
+		userlog('> '+msg);
+		return respond(fn, msg, 1);
+	});
+	socket.on('entry-score',function(data){
+		if (User.role !== 'server')
+			return respond(fn);
+
+		data = json_decode(data);
+		userlog(`> Entry #${data.entryid} score change`);
+		io.in(ENTRY_UPDATES_CHANNEL).emit('entry-score',data);
+	});
 	socket.on('disconnect', function(){
-		if (isGuest() || User.role === 'server')
+		if (isGuest())
 			return;
 
 		userlog('> Disconnected');
