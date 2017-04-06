@@ -185,7 +185,7 @@ io.on('connection', function(socket){
 		data = json_decode(data);
 		Database.query('UPDATE notifications SET read_at = NOW(), read_action = $2 WHERE id = $1', [data.nid, data.action], queryhandle(function(){
 
-			userlog('> Marked notification &'+data.nid+' read');
+			userlog('> Marked notification #'+data.nid+' read');
 
 			Database.query('SELECT u.id FROM users u LEFT JOIN notifications n ON n.user = u.id WHERE n.id = $1', [data.nid], queryhandle(function(result){
 				let userid = result[0].id;
