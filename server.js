@@ -298,6 +298,9 @@ io.on('connection', function(socket){
 			case "status":
 				let conns = {};
 				_.each(io.sockets.connected, (v, k) => {
+					if (k === socket.id)
+						return;
+
 					conns[k] = SocketMeta[v.id];
 				});
 				respond(fn, {
