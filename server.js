@@ -124,20 +124,22 @@ Database.on('error',function(err){
 	if (err.fatal)
 		process.exit();
 });
+
+const
+	SocketMeta = {},
+	joinroom = (socket, room) => {
+		socket.join(room);
+		SocketMeta[socket.id].rooms[room] = true;
+	},
+	leaveroom = (socket, room) => {
+		socket.leave(room);
+		delete SocketMeta[socket.id].rooms[room];
+	};
 io.on('connection', function(socket){
 	//log('> Incoming connection');
 	let User = { id: getGuestID(socket) },
-		inrooms = {},
-		joinroom = room => {
-			socket.join(room);
-			inrooms[room] = true;
-		},
-		leaveroom = room => {
-			socket.leave(room);
-			delete inrooms[room];
-		},
 		isGuest = () => typeof User.role === 'undefined',
-		userlog = function(msg){ log('['+User.id+'] '+msg) },
+		userlog = function(msg){ log('['+User.id+';'+socket.id+'] '+msg) },
 		authByCookie = () => {
 			let access = findAuthCookie(socket);
 			if (access === config.WS_SERVER_KEY){
@@ -156,7 +158,7 @@ io.on('connection', function(socket){
 
 					let isServer = User.role === 'server';
 					if (!isServer){
-						socket.join(User.id);
+						joinroom(socket, User.id);
 						userlog('> Authenticated');
 					}
 					socket.emit('auth', _respond({ name: User.name }));
@@ -165,10 +167,17 @@ io.on('connection', function(socket){
 				}));
 			}
 			else socket.emit('auth-guest');
+		},
+		writeMeta = (key, data) => {
+			SocketMeta[socket.id][key] = data;
 		};
+	SocketMeta[socket.id] = {rooms:{}};
 
 	authByCookie();
 
+	socket.on('navigate',function(data){
+		writeMeta('page',data.page);
+	});
 	socket.on('notify-pls',function(data, fn){
 		if (User.role !== 'server')
 			return respond(fn);
@@ -176,7 +185,7 @@ io.on('connection', function(socket){
 		userlog('> Sent notification count to '+data.user);
 
 		data = json_decode(data);
-		pleaseNotify(io.in(data.user), data.user);
+		pleaseNotify(socket.in(data.user), data.user);
 	});
 	socket.on('mark-read',function(data, fn){
 		if (User.role !== 'server')
@@ -190,7 +199,7 @@ io.on('connection', function(socket){
 			Database.query('SELECT u.id FROM users u LEFT JOIN notifications n ON n.user = u.id WHERE n.id = $1', [data.nid], queryhandle(function(result){
 				let userid = result[0].id;
 
-				pleaseNotify(io.in(userid), userid);
+				pleaseNotify(socket.in(userid), userid);
 			}));
 		}));
 	});
@@ -201,7 +210,7 @@ io.on('connection', function(socket){
 		userlog('> Sent notification count to '+data.user);
 
 		data = json_decode(data);
-		pleaseNotify(io.in(data.user), data.user);
+		pleaseNotify(socket.in(data.user), data.user);
 	});
 	socket.on('unauth',function(data, fn){
 		if (isGuest())
@@ -225,7 +234,7 @@ io.on('connection', function(socket){
 
 		data = json_decode(data);
 		userlog(`> Post ${what.replace(/e?$/,'ed')} (${data.type}-${data.id})`);
-		io.in(POST_UPDATES_CHANNEL).emit('post-'+what,data);
+		socket.in(POST_UPDATES_CHANNEL).emit('post-'+what,data);
 	};
 	socket.on('post-add',postaction('add'));
 	socket.on('post-update',postaction('update'));
@@ -238,11 +247,11 @@ io.on('connection', function(socket){
 		let action;
 		switch(data){
 			case "true":
-				joinroom(POST_UPDATES_CHANNEL);
+				joinroom(socket, POST_UPDATES_CHANNEL);
 				action = 'Joined';
 			break;
 			case "false":
-				leaveroom(POST_UPDATES_CHANNEL);
+				leaveroom(socket, POST_UPDATES_CHANNEL);
 				action = 'Left';
 			break;
 			default: return;
@@ -258,11 +267,11 @@ io.on('connection', function(socket){
 		let action;
 		switch(data){
 			case "true":
-				joinroom(ENTRY_UPDATES_CHANNEL);
+				joinroom(socket, ENTRY_UPDATES_CHANNEL);
 				action = 'Joined';
 			break;
 			case "false":
-				leaveroom(ENTRY_UPDATES_CHANNEL);
+				leaveroom(socket, ENTRY_UPDATES_CHANNEL);
 				action = 'Left';
 			break;
 			default: return;
@@ -277,9 +286,31 @@ io.on('connection', function(socket){
 
 		data = json_decode(data);
 		userlog(`> Entry #${data.entryid} score change`);
-		io.in(ENTRY_UPDATES_CHANNEL).emit('entry-score',data);
+		socket.in(ENTRY_UPDATES_CHANNEL).emit('entry-score',data);
+	});
+	socket.on('devquery',function(params, fn){
+		if (User.role !== 'developer')
+			return respond(fn);
+
+		params = json_decode(params);
+
+		switch (params.what){
+			case "status":
+				let conns = {};
+				_.each(io.sockets.connected, (v, k) => {
+					conns[k] = SocketMeta[v.id];
+				});
+				respond(fn, {
+					clients: conns,
+				});
+			break;
+			default:
+				respond(fn, 'Unknown action '+params.what);
+		}
 	});
 	socket.on('disconnect', function(){
+		delete SocketMeta[socket.id];
+
 		if (isGuest())
 			return;
 
