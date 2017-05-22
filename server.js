@@ -171,7 +171,10 @@ io.on('connection', function(socket){
 		writeMeta = (key, data) => {
 			SocketMeta[socket.id][key] = data;
 		};
-	SocketMeta[socket.id] = {rooms:{}};
+	SocketMeta[socket.id] = {
+		rooms: {},
+		ip: socket.request.connection.remoteAddress,
+	};
 
 	authByCookie();
 
@@ -298,7 +301,7 @@ io.on('connection', function(socket){
 			case "status":
 				let conns = {};
 				_.each(io.sockets.connected, (v, k) => {
-					if (k === socket.id)
+					if (k === socket.id && !config.LOCALHOST)
 						return;
 
 					conns[k] = SocketMeta[v.id];
