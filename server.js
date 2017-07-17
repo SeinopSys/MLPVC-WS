@@ -1,5 +1,4 @@
 // jshint strict:false,-W079
-/* global process,console */
 process.title = 'MLPVC-WS';
 
 const
@@ -88,7 +87,7 @@ function queryhandle(f){
 	};
 }
 function pleaseNotify(socket, userid){
-	Database.query('SELECT COUNT(*) as cnt FROM notifications WHERE "user" = $1 AND read_at IS NULL', [userid], queryhandle(function(result){
+	Database.query('SELECT COUNT(*) as cnt FROM notifications WHERE recipient_id = $1 AND read_at IS NULL', [userid], queryhandle(function(result){
 		if (typeof result[0] !== 'object')
 			return;
 
@@ -148,7 +147,7 @@ io.on('connection', function(socket){
 			}
 			else if (typeof access === 'string' && access.length){
 				let token = sha256hash(access);
-				Database.query('SELECT u.* FROM users u LEFT JOIN sessions s ON s.user = u.id WHERE s.token = $1', [token], queryhandle(function(result){
+				Database.query('SELECT u.* FROM users u LEFT JOIN sessions s ON s.user_id = u.id WHERE s.token = $1', [token], queryhandle(function(result){
 					if (typeof result[0] !== 'object'){
 						socket.emit('auth-guest');
 						return;
@@ -199,7 +198,7 @@ io.on('connection', function(socket){
 
 			userlog('> Marked notification #'+data.nid+' read');
 
-			Database.query('SELECT u.id FROM users u LEFT JOIN notifications n ON n.user = u.id WHERE n.id = $1', [data.nid], queryhandle(function(result){
+			Database.query('SELECT u.id FROM users u LEFT JOIN notifications n ON n.recipient_id = u.id WHERE n.id = $1', [data.nid], queryhandle(function(result){
 				let userid = result[0].id;
 
 				pleaseNotify(socket.in(userid), userid);
@@ -229,11 +228,11 @@ io.on('connection', function(socket){
 		if (config.LOCALHOST !== true)
 			return respond(fn);
 
-		respond(fn, { User, rooms: Object.keys(inrooms) });
+		respond(fn, { User, rooms: Object.keys(SocketMeta[socket.id].rooms) });
 	});
 	const postaction = (what) => function(data){
 		if (User.role !== 'server')
-			return respond(fn);
+			return;
 
 		data = json_decode(data);
 		userlog(`> Post ${what.replace(/e?$/,'ed')} (${data.type}-${data.id})`);
@@ -285,7 +284,7 @@ io.on('connection', function(socket){
 	});
 	socket.on('entry-score',function(data){
 		if (User.role !== 'server')
-			return respond(fn);
+			return;
 
 		data = json_decode(data);
 		userlog(`> Entry #${data.entryid} score change`);
