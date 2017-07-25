@@ -50,6 +50,7 @@ else {
 }
 server.listen(PORT);
 let io = Server.listen(server);
+log('[Socket.io] Server listening on port '+PORT);
 
 moment.locale('en');
 moment.tz.add('Europe/Budapest|CET CEST|-10 -20|01010101010101010101010|1BWp0 1qM0 WM0 1qM0 WM0 1qM0 11A0 1o00 11A0 1o00 11A0 1o00 11A0 1qM0 WM0 1qM0 WM0 1qM0 11A0 1o00 11A0 1o00|11e6');
@@ -143,7 +144,7 @@ io.on('connection', function(socket){
 			let access = findAuthCookie(socket);
 			if (access === config.WS_SERVER_KEY){
 				User = { id: 'Web Server', role: 'server'};
-				userlog('> Authenticated');
+				//userlog('> Authenticated');
 			}
 			else if (typeof access === 'string' && access.length){
 				let token = sha256hash(access);
@@ -316,7 +317,7 @@ io.on('connection', function(socket){
 	socket.on('disconnect', function(){
 		delete SocketMeta[socket.id];
 
-		if (isGuest())
+		if (isGuest() || User.role !== 'server')
 			return;
 
 		userlog('> Disconnected');
