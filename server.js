@@ -42,6 +42,7 @@ if (config.LOCALHOST === true){
 else {
 	let lex = require('greenlock-express').create({
 		server: 'https://acme-v01.api.letsencrypt.org/directory',
+		challenges: { 'tls-sni-01': require('le-challenge-sni').create({}) },
 		email: 'seinopsys@gmail.com',
 		agreeTos: true,
 		approveDomains: [ 'ws.mlpvc-rr.ml'],
