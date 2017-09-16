@@ -46,6 +46,7 @@ else {
 		email: 'seinopsys@gmail.com',
 		agreeTos: true,
 		approveDomains: [ 'ws.mlpvc-rr.ml'],
+		renewWithin: 1684800000,
 	});
 	server = https.createServer(lex.httpsOptions, lex.middleware(app));
 }
