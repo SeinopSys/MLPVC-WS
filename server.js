@@ -129,6 +129,7 @@ Database.on('error',function(err){
 
 const
 	SocketMeta = {},
+	SocketMap = {},
 	joinroom = (socket, room) => {
 		socket.join(room);
 		SocketMeta[socket.id].rooms[room] = true;
@@ -164,6 +165,7 @@ io.on('connection', function(socket){
 						userlog('> Authenticated');
 					}
 					socket.emit('auth', _respond({ name: User.name }));
+					writeMeta('username', User.name);
 					if (!isServer)
 						pleaseNotify(socket, User.id);
 				}));
@@ -172,11 +174,16 @@ io.on('connection', function(socket){
 		},
 		writeMeta = (key, data) => {
 			SocketMeta[socket.id][key] = data;
+		},
+		clearMeta = (key) => {
+			delete SocketMeta[socket.id][key];
 		};
 	SocketMeta[socket.id] = {
 		rooms: {},
 		ip: socket.request.connection.remoteAddress,
+		connected: moment(),
 	};
+	SocketMap[socket.id] = socket;
 
 	authByCookie();
 
@@ -223,6 +230,8 @@ io.on('connection', function(socket){
 
 		let oldid = User.id;
 		User = { id: getGuestID(socket) };
+		leaveroom(socket, oldid);
+		clearMeta('username');
 		userlog(`> Unauthenticated (was ${oldid})`);
 		respond(fn, true);
 		socket.emit('auth-guest');
@@ -307,17 +316,40 @@ io.on('connection', function(socket){
 						return;
 
 					conns[k] = SocketMeta[v.id];
+					if (typeof conns[k].connected !== 'undefined')
+						conns[k].connectedSince = conns[k].connected.fromNow();
 				});
 				respond(fn, {
 					clients: conns,
 				});
 			break;
 			default:
-				respond(fn, 'Unknown action '+params.what);
+				respond(fn, 'Unknown type '+params.what);
 		}
+	});
+	socket.on('devaction',function(params, fn){
+		if (User.role !== 'developer')
+			return respond(fn);
+
+		params = json_decode(params);
+		if (typeof params.clientId !== 'string'){
+			return respond(fn, 'Invalid client ID');
+		}
+		if (!(params.clientId in SocketMap)){
+			if (params.clientId === 'self')
+				params.clientId = socket.id;
+			else return respond(fn, 'Invalid client ID');
+		}
+
+		const target = SocketMap[params.clientId];
+		delete params.clientId;
+
+		target.emit('devaction',params);
+		respond(fn, true);
 	});
 	socket.on('disconnect', function(){
 		delete SocketMeta[socket.id];
+		delete SocketMap[socket.id];
 
 		if (isGuest() || User.role !== 'server')
 			return;
