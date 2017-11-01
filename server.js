@@ -162,7 +162,7 @@ io.on('connection', function(socket){
 					let isServer = User.role === 'server';
 					if (!isServer){
 						joinroom(socket, User.id);
-						userlog('> Authenticated');
+						//userlog('> Authenticated');
 					}
 					socket.emit('auth', _respond({ name: User.name }));
 					writeMeta('username', User.name);
