@@ -10,7 +10,7 @@ const
 	moment = require('moment-timezone'),
 	SocketIO = require('socket.io'),
 	express = require('express'),
-	https = require('http2'),
+	https = require('https'),
 	cors = require('cors'),
 	createHash = require('sha.js'),
 	sha256hash = data => createHash('sha256').update(data, 'utf8').digest('hex'),
