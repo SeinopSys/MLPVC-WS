@@ -8,7 +8,7 @@ const
 	_ = require('underscore'),
 	config = require('./config'),
 	moment = require('moment-timezone'),
-	Server = require('socket.io'),
+	SocketIO = require('socket.io'),
 	express = require('express'),
 	https = require('http2'),
 	cors = require('cors'),
@@ -41,16 +41,17 @@ if (config.LOCALHOST === true){
 }
 else {
 	let lex = require('greenlock-express').create({
-		server: 'https://acme-v01.api.letsencrypt.org/directory',
-		email: 'seinopsys@gmail.com',
+		server: config.LE_SERVER,
+		email: config.LE_EMAIL,
 		agreeTos: true,
-		approveDomains: [ 'ws.mlpvc-rr.ml'],
-		renewWithin: 1684800000,
+		approveDomains: config.LE_DOMAINS,
+		renewWithin: 1728000000,
+		debug: true,
 	});
 	server = https.createServer(lex.httpsOptions, lex.middleware(app));
 }
 server.listen(PORT);
-let io = Server.listen(server);
+let io = SocketIO.listen(server);
 log('[Socket.io] Server listening on port '+PORT);
 
 moment.locale('en');
