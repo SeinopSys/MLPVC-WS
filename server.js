@@ -214,15 +214,6 @@ io.on('connection', function(socket){
 			}));
 		}));
 	});
-	socket.on('notify-pls',function(data, fn){
-		if (User.role !== 'server')
-			return respond(fn);
-
-		userlog('> Sent notification count to '+data.user);
-
-		data = json_decode(data);
-		pleaseNotify(socket.in(data.user), data.user);
-	});
 	socket.on('unauth',function(data, fn){
 		if (isGuest())
 			return respond(fn);
