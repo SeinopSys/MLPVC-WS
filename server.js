@@ -46,7 +46,6 @@ else {
 		agreeTos: true,
 		approveDomains: config.LE_DOMAINS,
 		renewWithin: 1728000000,
-		debug: true,
 	});
 	server = https.createServer(lex.httpsOptions, lex.middleware(app));
 }
