@@ -23,7 +23,7 @@ let Database = new pg.Client('postgres://'+config.DB_USER+':'+config.DB_PASS+'@'
 // CORS
 app.use(cors(function(req, callback){
 	let corsOptions = { origin: false };
-	if (/^https:\/\/mlpvc-rr\.(ml|lc)/.test(req.header('Origin')))
+	if (/^https:\/\/(mlpvector.\.(club|lc)|mlpvc-rr\.ml)/.test(req.header('Origin')))
 		corsOptions.origin = true;
 	callback(null, corsOptions);
 }));
