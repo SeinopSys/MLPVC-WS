@@ -337,6 +337,24 @@ io.on('connection', function(socket){
 		target.emit('devaction',params);
 		respond(fn, true);
 	});
+	const sessionNotify = evt => {
+		socket.on(evt, function(data, fn){
+			if (User.role !== 'server')
+				return respond(fn);
+
+			data = json_decode(data);
+			if (typeof data.userId !== 'string'){
+				return respond(fn, 'Invalid user ID');
+			}
+
+			delete data.userId;
+
+			socket.in(data.userId).emit(evt, data);
+			respond(fn, true);
+		});
+	};
+	sessionNotify('session-remove');
+	sessionNotify('session-refresh');
 	socket.on('disconnect', function(){
 		delete SocketMeta[socket.id];
 		delete SocketMap[socket.id];
