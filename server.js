@@ -228,7 +228,7 @@ io.on('connection', function(socket){
 	});
 	socket.on('status',function(data, fn){
 		if (config.LOCALHOST !== true)
-			return respond(fn);
+			return respond(fn, 'This can only be used in local mode');
 
 		respond(fn, { User, rooms: Object.keys(SocketMeta[socket.id].rooms) });
 	});
