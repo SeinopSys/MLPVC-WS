@@ -17,7 +17,7 @@ const
 	POST_UPDATES_CHANNEL = 'post-updates',
 	ENTRY_UPDATES_CHANNEL = 'entry-updates';
 
-let Database = new pg.Client('postgres://'+config.DB_USER+':'+config.DB_PASS+'@'+config.DB_HOST+'/mlpvc-rr'),
+let Database = new pg.Client(`postgres://${config.DB_USER}:${config.DB_PASS}@${config.DB_HOST}/mlpvc-rr`),
 	app = express();
 
 // CORS
