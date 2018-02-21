@@ -3,10 +3,11 @@ module.exports = {
 	DB_USER: '',
 	DB_PASS: '',
 	WS_SERVER_KEY: '',
+	ORIGIN_REGEX: /^https:\/\/mlpvector\.lc'/,
 
 	LE_SERVER: 'staging',
 	LE_EMAIL: '',
-	LE_DOMAINS: ['ws.mlpvc-rr.lc'],
+	LE_DOMAINS: ['ws.mlpvector.lc'],
 
 	// For development only
 	LOCALHOST: true,

@@ -21,12 +21,7 @@ let Database = new pg.Client('postgres://'+config.DB_USER+':'+config.DB_PASS+'@'
 	app = express();
 
 // CORS
-app.use(cors(function(req, callback){
-	let corsOptions = { origin: false };
-	if (/^https:\/\/(mlpvector.\.(club|lc)|mlpvc-rr\.ml)/.test(req.header('Origin')))
-		corsOptions.origin = true;
-	callback(null, corsOptions);
-}));
+app.use(cors({ origin: config.ORIGIN_REGEX }));
 
 app.get('/', function (req, res) {
 	res.sendStatus(403);
@@ -51,7 +46,12 @@ else {
 }
 server.listen(PORT);
 let io = SocketIO.listen(server);
-log('[Socket.io] Server listening on port '+PORT);
+io.origins(function(origin, callback){
+	if (!config.ORIGIN_REGEX.test(origin))
+		return callback('origin not allowed', false);
+	callback(null, true);
+});
+log(`[Socket.io] Server listening on port ${PORT}`);
 
 moment.locale('en');
 moment.tz.add('Europe/Budapest|CET CEST|-10 -20|01010101010101010101010|1BWp0 1qM0 WM0 1qM0 WM0 1qM0 11A0 1o00 11A0 1o00 11A0 1o00 11A0 1qM0 WM0 1qM0 WM0 1qM0 11A0 1o00 11A0 1o00|11e6');
