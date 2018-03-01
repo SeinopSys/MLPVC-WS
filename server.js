@@ -163,13 +163,13 @@ io.on('connection', function(socket){
 						joinroom(socket, User.id);
 						//userlog('> Authenticated');
 					}
-					socket.emit('auth', _respond({ name: User.name }));
+					socket.emit('auth', _respond({ name: User.name, clientid: socket.id }));
 					writeMeta('username', User.name);
 					if (!isServer)
 						pleaseNotify(socket, User.id);
 				}));
 			}
-			else socket.emit('auth-guest');
+			else socket.emit('auth-guest', _respond({ clientid: socket.id }));
 		},
 		writeMeta = (key, data) => {
 			SocketMeta[socket.id][key] = data;
@@ -334,6 +334,17 @@ io.on('connection', function(socket){
 
 		target.emit('devaction',params);
 		respond(fn, true);
+	});
+	socket.on('hello',function(params, fn){
+		if (User.role !== 'server')
+			return respond(fn);
+
+		params = json_decode(params);
+
+		if (params.clientid in SocketMap)
+			return SocketMap[params.clientid].emit('hello',  _respond({ priv: params.priv }));
+
+		log(`Client ${params.clientid} not found among connected clients`);
 	});
 	socket.on('disconnect', function(){
 		delete SocketMeta[socket.id];
