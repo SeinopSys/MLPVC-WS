@@ -136,6 +136,9 @@ const
 	leaveroom = (socket, room) => {
 		socket.leave(room);
 		delete SocketMeta[socket.id].rooms[room];
+	},
+	authGuest = socket => {
+		socket.emit('auth-guest', _respond({ clientid: socket.id }));
 	};
 io.on('connection', function(socket){
 	//log('> Incoming connection');
@@ -152,7 +155,7 @@ io.on('connection', function(socket){
 				let token = sha256hash(access);
 				Database.query('SELECT u.* FROM users u LEFT JOIN sessions s ON s.user_id = u.id WHERE s.token = $1', [token], queryhandle(function(result){
 					if (typeof result[0] !== 'object'){
-						socket.emit('auth-guest');
+						authGuest(socket);
 						return;
 					}
 
@@ -169,7 +172,7 @@ io.on('connection', function(socket){
 						pleaseNotify(socket, User.id);
 				}));
 			}
-			else socket.emit('auth-guest', _respond({ clientid: socket.id }));
+			else authGuest(socket);
 		},
 		writeMeta = (key, data) => {
 			SocketMeta[socket.id][key] = data;
@@ -224,7 +227,7 @@ io.on('connection', function(socket){
 		clearMeta('username');
 		userlog(`> Unauthenticated (was ${oldid})`);
 		respond(fn, true);
-		socket.emit('auth-guest');
+		authGuest(socket);
 	});
 	socket.on('status',function(data, fn){
 		if (config.LOCALHOST !== true)
