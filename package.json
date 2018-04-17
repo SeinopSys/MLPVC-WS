@@ -7,7 +7,7 @@
     "express": "^4.14.0",
     "greenlock-express": "^2.0.9",
     "le-challenge-sni": "^2.0.1",
-    "moment-timezone": "^0.5.9",
+    "moment-timezone": "^0.5.15",
     "pg": "^7.0.0",
     "sha.js": "^2.4.8",
     "socket.io": "^2.0.0",
