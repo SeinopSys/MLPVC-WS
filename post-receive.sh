@@ -3,7 +3,7 @@ echo "##### post-receive hook #####"
 read oldrev newrev refname
 echo "Push triggered update to revision $newrev ($refname)"
 
-CMD_CD="cd .. && echo 'Changed directory to $PWD'"
+CMD_CD="cd $(readlink -nf \"$PWD/../..\")"
 CMD_FETCH="env -i git fetch"
 CMD_YARN="sudo -u www-data yarn install --production"
 CMD_STOP="sudo -u www-data pm2 stop pm2.json"
