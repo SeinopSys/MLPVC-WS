@@ -5,9 +5,9 @@ echo "Push triggered update to revision $newrev ($refname)"
 
 CMD_PWD="cd .. && pwd"
 CMD_FETCH="env -i git fetch"
-CMD_YARN="sudo -u www-data yarn install --production"
-CMD_STOP="sudo pm2 stop pm2.json"
-CMD_START="sudo pm2 start pm2.json"
+CMD_YARN="yarn install --production"
+CMD_STOP="pm2 stop pm2.json"
+CMD_START="pm2 start pm2.json"
 
 echo "$ $CMD_PWD"
 eval $CMD_PWD
