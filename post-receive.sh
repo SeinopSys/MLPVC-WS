@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-echo "##### post-receive hook #####"
 read oldrev newrev refname
 echo "Push triggered update to revision $newrev ($refname)"
 
@@ -27,5 +26,3 @@ if $GIT diff --name-only $oldrev $newrev | grep "^server.js"; then
 else
 	echo "# Skipping server restart, serve file not modified"
 fi
-
-echo "##### end post-receive hook #####"
