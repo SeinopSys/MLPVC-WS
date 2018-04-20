@@ -20,9 +20,5 @@ else
 	echo "# Skipping Yarn install, lockfile not modified"
 fi
 
-if $GIT diff --name-only $oldrev $newrev | grep "^server.js"; then
-	echo "$ $CMD_RESTART"
-	eval $CMD_RESTART
-else
-	echo "# Skipping server restart, file not modified"
-fi
+echo "$ $CMD_RESTART"
+eval $CMD_RESTART
