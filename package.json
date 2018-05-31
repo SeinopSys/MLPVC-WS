@@ -1,5 +1,5 @@
 {
-  "name": "MLPVC-WS",
+  "name": "mlpvc-ws",
   "version": "1.0.0",
   "description": "Websocket server for handling instant notifications on MLPVC-RR",
   "dependencies": {
@@ -18,5 +18,8 @@
     "url": "ponydevs/MLPVC-WS"
   },
   "author": "SeinopSys <seinopsys@gmail.com> (https://github.com/SeinopSys)",
-  "private": true
+  "private": true,
+  "engines": {
+    "yarn": "YARN NO LONGER USED - use npm instead."
+  }
 }
