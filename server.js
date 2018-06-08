@@ -240,7 +240,7 @@ io.on('connection', function(socket){
 			return;
 
 		data = json_decode(data);
-		userlog(`> Post ${what.replace(/e?$/,'ed')} (${data.type}-${data.id})`);
+		userlog(`> Post #${data.id} ${what.replace(/e?$/,'ed')}`);
 		socket.in(POST_UPDATES_CHANNEL).emit('post-'+what,data);
 	};
 	socket.on('post-add',postaction('add'));
