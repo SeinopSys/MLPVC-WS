@@ -349,6 +349,12 @@ io.on('connection', function(socket){
 
 		log(`Client ${params.clientid} not found among connected clients`);
 	});
+	socket.on('update',function(params, fn){
+		if (User.role !== 'server')
+			return respond(fn);
+
+		io.emit('update',params);
+	});
 	socket.on('disconnect', function(){
 		delete SocketMeta[socket.id];
 		delete SocketMap[socket.id];

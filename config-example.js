@@ -3,7 +3,7 @@ module.exports = {
 	DB_USER: '',
 	DB_PASS: '',
 	WS_SERVER_KEY: '',
-	ORIGIN_REGEX: /^https:\/\/mlpvector\.lc'/,
+	ORIGIN_REGEX: /^(https:\/\/mlpvector\.lc|http:\/\/localhost)/,
 
 	LE_SERVER: 'staging',
 	LE_EMAIL: '',
