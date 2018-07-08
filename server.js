@@ -35,14 +35,26 @@ if (config.LOCALHOST === true){
 	}, app);
 }
 else {
-	let lex = require('greenlock-express').create({
+	const DNSChallenge = require('le-challenge-cloudflare').create({
+		email: config.LE_EMAIL,
+		key: config.CF_KEY,
+	});
+	let glx = require('greenlock-express').create({
+		version: 'draft-11',
 		server: config.LE_SERVER,
 		email: config.LE_EMAIL,
 		agreeTos: true,
+		communityMember: true,
 		approveDomains: config.LE_DOMAINS,
 		renewWithin: 1728000000,
+		challenges: { 'dns-01': DNSChallenge },
+		challengeType: 'dns-01',
+		store: require('le-store-certbot').create({
+			configDir: require('path').join(require('os').homedir(), 'acme', 'etc'),
+			webrootPath: '/tmp/acme-challenges'
+		})
 	});
-	server = https.createServer(lex.httpsOptions, lex.middleware(app));
+	server = https.createServer(glx.httpsOptions, glx.middleware(app));
 }
 server.listen(PORT);
 let io = SocketIO.listen(server);
