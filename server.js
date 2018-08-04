@@ -330,26 +330,6 @@ io.on('connection', function(socket){
 				respond(fn, 'Unknown type '+params.what);
 		}
 	});
-	socket.on('devaction',function(params, fn){
-		if (User.role !== 'developer')
-			return respond(fn);
-
-		params = json_decode(params);
-		if (typeof params.clientId !== 'string'){
-			return respond(fn, 'Invalid client ID');
-		}
-		if (!(params.clientId in SocketMap)){
-			if (params.clientId === 'self')
-				params.clientId = socket.id;
-			else return respond(fn, 'Invalid client ID');
-		}
-
-		const target = SocketMap[params.clientId];
-		delete params.clientId;
-
-		target.emit('devaction',params);
-		respond(fn, true);
-	});
 	socket.on('hello',function(params, fn){
 		if (User.role !== 'server')
 			return respond(fn);
