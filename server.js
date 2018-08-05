@@ -2,7 +2,6 @@
 process.title = 'MLPVC-WS';
 
 const
-	PORT = 8667,
 	fs = require('fs'),
 	pg = require('pg'),
 	_ = require('underscore'),
@@ -56,14 +55,14 @@ else {
 	});
 	server = https.createServer(glx.httpsOptions, glx.middleware(app));
 }
-server.listen(PORT);
+server.listen(config.PORT);
 let io = SocketIO.listen(server);
 io.origins(function(origin, callback){
 	if (!config.ORIGIN_REGEX.test(origin))
 		return callback('origin not allowed', false);
 	callback(null, true);
 });
-log(`[Socket.io] Server listening on port ${PORT}`);
+log(`[Socket.io] Server listening on port ${config.PORT}`);
 
 moment.locale('en');
 moment.tz.add('Europe/Budapest|CET CEST|-10 -20|01010101010101010101010|1BWp0 1qM0 WM0 1qM0 WM0 1qM0 11A0 1o00 11A0 1o00 11A0 1o00 11A0 1qM0 WM0 1qM0 WM0 1qM0 11A0 1o00 11A0 1o00|11e6');

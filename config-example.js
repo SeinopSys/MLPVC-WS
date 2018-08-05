@@ -1,4 +1,6 @@
 module.exports = {
+	PORT: 8443,
+
 	DB_HOST: '',
 	DB_USER: '',
 	DB_PASS: '',
