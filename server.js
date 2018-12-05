@@ -45,7 +45,7 @@ else {
 		agreeTos: true,
 		communityMember: true,
 		approveDomains: config.LE_DOMAINS,
-		renewWithin: 1728000000,
+		renewWithin: 2592000e3, // 30 days
 		challenges: { 'dns-01': DNSChallenge },
 		challengeType: 'dns-01',
 		store: require('le-store-certbot').create({
