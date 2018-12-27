@@ -119,7 +119,7 @@ const findAuthCookie = socket =>{
 };
 const getGuestID = socket => `Guest#${socket.id}`;
 const findRealIp = socket => {
-	let ip = socket.request.connection.remoteAddress;
+	let ip = socket.request.connection.remoteAddress.replace(/^::ffff:([\d.]+)$/, '$1');
 	if (cloudflareIp(ip))
 		ip = socket.client.request.headers['cf-connecting-ip'];
 	return ip;
