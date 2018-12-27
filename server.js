@@ -11,10 +11,12 @@ const
 	express = require('express'),
 	https = require('https'),
 	cors = require('cors'),
+	cloudflareIp = require('cloudflare-ip'),
 	createHash = require('sha.js'),
 	sha256hash = data => createHash('sha256').update(data, 'utf8').digest('hex'),
 	POST_UPDATES_CHANNEL = 'post-updates',
-	ENTRY_UPDATES_CHANNEL = 'entry-updates';
+	ENTRY_UPDATES_CHANNEL = 'entry-updates',
+	log = text => console.log(moment().format('YYYY-MM-DD HH:mm:ss.SSS')+' | ' + text);
 
 let Database = new pg.Client(`postgres://${config.DB_USER}:${config.DB_PASS}@${config.DB_HOST}/mlpvc-rr`),
 	app = express();
@@ -67,10 +69,7 @@ log(`[Socket.io] Server listening on port ${config.PORT}`);
 moment.locale('en');
 moment.tz.add('Europe/Budapest|CET CEST|-10 -20|01010101010101010101010|1BWp0 1qM0 WM0 1qM0 WM0 1qM0 11A0 1o00 11A0 1o00 11A0 1o00 11A0 1qM0 WM0 1qM0 WM0 1qM0 11A0 1o00 11A0 1o00|11e6');
 moment.tz.setDefault('Europe/Budapest');
-function log(text){
-	console.log(moment().format('YYYY-MM-DD HH:mm:ss.SSS')+' | ' + text);
-}
-function _respond(message, status, extra){
+const _respond = (message, status, extra) => {
 	let response;
 	if (message === true)
 		response = {status:true};
@@ -85,32 +84,29 @@ function _respond(message, status, extra){
 	if (extra)
 		_.extend(response, extra);
 	return response;
-}
-function respond(fn){
+};
+const respond = (fn, ...rest) => {
 	if (typeof fn !== 'function')
 		return;
-	fn(JSON.stringify(_respond.apply(undefined, [].slice.call(arguments,1))));
-}
-function queryhandle(f){
-	return function(err, result){
-		if(err) {
+	fn(JSON.stringify(_respond(...rest)));
+};
+const handleQuery = f =>
+	function(err, result){
+		if (err) {
 	      return console.error('error running query', err);
 	    }
 	    f(result.rows, result);
 	};
-}
-function pleaseNotify(socket, userid){
-	Database.query('SELECT COUNT(*) as cnt FROM notifications WHERE recipient_id = $1 AND read_at IS NULL', [userid], queryhandle(function(result){
+function pleaseNotify(socket, userId){
+	Database.query('SELECT COUNT(*) as cnt FROM notifications WHERE recipient_id = $1 AND read_at IS NULL', [userId], handleQuery(result => {
 		if (typeof result[0] !== 'object')
 			return;
 
 		socket.emit('notif-cnt', _respond({ cnt: parseInt(result[0].cnt,10) }));
 	}));
 }
-function json_decode(data){
-	return typeof data === 'string' ? JSON.parse(data) : data;
-}
-function findAuthCookie(socket){
+const decodeJson = data => typeof data === 'string' ? JSON.parse(data) : data;
+const findAuthCookie = socket =>{
 	if (!socket.handshake.headers.cookie || !socket.handshake.headers.cookie.length)
 		return;
 	let cookieArray = socket.handshake.headers.cookie.split('; '),
@@ -120,8 +116,14 @@ function findAuthCookie(socket){
 		cookies[split[0]] = split[1];
 	}
 	return cookies.access;
-}
-const getGuestID = (socket) => 'Guest#'+socket.id;
+};
+const getGuestID = socket => `Guest#${socket.id}`;
+const findRealIp = socket => {
+	let ip = socket.request.connection.remoteAddress;
+	if (cloudflareIp(ip))
+		ip = socket.client.request.headers['cf-connecting-ip'];
+	return ip;
+};
 
 Database.connect(function(err) {
 	if (err !== null){
@@ -164,7 +166,7 @@ io.on('connection', function(socket){
 			}
 			else if (typeof access === 'string' && access.length){
 				let token = sha256hash(access);
-				Database.query('SELECT u.* FROM users u LEFT JOIN sessions s ON s.user_id = u.id WHERE s.token = $1', [token], queryhandle(function(result){
+				Database.query('SELECT u.* FROM users u LEFT JOIN sessions s ON s.user_id = u.id WHERE s.token = $1', [token], handleQuery(result => {
 					if (typeof result[0] !== 'object'){
 						authGuest(socket);
 						return;
@@ -193,7 +195,7 @@ io.on('connection', function(socket){
 		};
 	SocketMeta[socket.id] = {
 		rooms: {},
-		ip: socket.request.connection.remoteAddress,
+		ip: findRealIp(socket),
 		connected: moment(),
 	};
 	SocketMap[socket.id] = socket;
@@ -209,19 +211,18 @@ io.on('connection', function(socket){
 
 		userlog('> Sent notification count to '+data.user);
 
-		data = json_decode(data);
+		data = decodeJson(data);
 		pleaseNotify(socket.in(data.user), data.user);
 	});
 	socket.on('mark-read',function(data, fn){
 		if (User.role !== 'server')
 			return respond(fn);
 
-		data = json_decode(data);
-		Database.query('UPDATE notifications SET read_at = NOW(), read_action = $2 WHERE id = $1', [data.nid, data.action], queryhandle(function(){
-
+		data = decodeJson(data);
+		Database.query('UPDATE notifications SET read_at = NOW(), read_action = $2 WHERE id = $1', [data.nid, data.action], handleQuery(() => {
 			userlog('> Marked notification #'+data.nid+' read');
 
-			Database.query('SELECT u.id FROM users u LEFT JOIN notifications n ON n.recipient_id = u.id WHERE n.id = $1', [data.nid], queryhandle(function(result){
+			Database.query('SELECT u.id FROM users u LEFT JOIN notifications n ON n.recipient_id = u.id WHERE n.id = $1', [data.nid], handleQuery(result => {
 				let userid = result[0].id;
 
 				pleaseNotify(socket.in(userid), userid);
@@ -246,11 +247,11 @@ io.on('connection', function(socket){
 
 		respond(fn, { User, rooms: Object.keys(SocketMeta[socket.id].rooms) });
 	});
-	const postaction = (what) => function(data){
+	const postaction = what => function(data){
 		if (User.role !== 'server')
 			return;
 
-		data = json_decode(data);
+		data = decodeJson(data);
 		userlog(`> Post #${data.id} ${what.replace(/e?$/,'ed')}`);
 		socket.in(POST_UPDATES_CHANNEL).emit('post-'+what,data);
 	};
@@ -300,15 +301,15 @@ io.on('connection', function(socket){
 		if (User.role !== 'server')
 			return;
 
-		data = json_decode(data);
+		data = decodeJson(data);
 		userlog(`> Entry #${data.entryid} score change`);
 		socket.in(ENTRY_UPDATES_CHANNEL).emit('entry-score',data);
 	});
-	socket.on('devquery',function(params, fn){
+	socket.on('devquery', (params, fn) => {
 		if (User.role !== 'developer')
 			return respond(fn);
 
-		params = json_decode(params);
+		params = decodeJson(params);
 
 		switch (params.what){
 			case "status":
@@ -333,7 +334,7 @@ io.on('connection', function(socket){
 		if (User.role !== 'server')
 			return respond(fn);
 
-		params = json_decode(params);
+		params = decodeJson(params);
 
 		if (params.clientid in SocketMap)
 			return SocketMap[params.clientid].emit('hello',  _respond({ priv: params.priv }));
