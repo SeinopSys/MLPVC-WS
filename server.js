@@ -12,7 +12,6 @@ const
 	https = require('https'),
 	cors = require('cors'),
 	AcmeDnsCloudflare = require('acme-dns-01-cloudflare'),
-	greenlockStore = require('greenlock-store-fs'),
 	cloudflareExpress = require('cloudflare-express'),
 	createHash = require('sha.js'),
 	sha256hash = data => createHash('sha256').update(data, 'utf8').digest('hex'),
@@ -55,7 +54,7 @@ else {
 		renewWithin: 2592000e3, // 30 days
 		challenges: { 'dns-01': cloudflareDns01 },
 		challengeType: 'dns-01',
-		store: greenlockStore.create({
+		store: require('le-store-certbot').create({
 			configDir: require('path').join(require('os').homedir(), 'acme', 'etc'),
 			webrootPath: '/tmp/acme-challenges'
 		})
