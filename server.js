@@ -4,14 +4,16 @@ process.title = 'MLPVC-WS';
 const
 	fs = require('fs'),
 	pg = require('pg'),
-	_ = require('underscore'),
+	_ = require('lodash'),
 	config = require('./config'),
 	moment = require('moment-timezone'),
 	SocketIO = require('socket.io'),
 	express = require('express'),
 	https = require('https'),
 	cors = require('cors'),
-	cloudflareIp = require('cloudflare-ip'),
+	AcmeDnsCloudflare = require('acme-dns-01-cloudflare'),
+	greenlockStore = require('greenlock-store-fs'),
+	cloudflareExpress = require('cloudflare-express'),
 	createHash = require('sha.js'),
 	sha256hash = data => createHash('sha256').update(data, 'utf8').digest('hex'),
 	POST_UPDATES_CHANNEL = 'post-updates',
@@ -23,6 +25,8 @@ let Database = new pg.Client(`postgres://${config.DB_USER}:${config.DB_PASS}@${c
 
 // CORS
 app.use(cors({ origin: config.ORIGIN_REGEX }));
+
+app.use(cloudflareExpress.restore({update_on_start:true}));
 
 app.get('/', function (req, res) {
 	res.sendStatus(403);
@@ -36,9 +40,10 @@ if (config.LOCALHOST === true){
 	}, app);
 }
 else {
-	const DNSChallenge = require('le-challenge-cloudflare').create({
+	const cloudflareDns01 = new AcmeDnsCloudflare({
 		email: config.LE_EMAIL,
 		key: config.CF_KEY,
+		verifyPropagation: true
 	});
 	let glx = require('greenlock-express').create({
 		version: 'draft-11',
@@ -48,9 +53,9 @@ else {
 		communityMember: true,
 		approveDomains: config.LE_DOMAINS,
 		renewWithin: 2592000e3, // 30 days
-		challenges: { 'dns-01': DNSChallenge },
+		challenges: { 'dns-01': cloudflareDns01 },
 		challengeType: 'dns-01',
-		store: require('le-store-certbot').create({
+		store: greenlockStore.create({
 			configDir: require('path').join(require('os').homedir(), 'acme', 'etc'),
 			webrootPath: '/tmp/acme-challenges'
 		})
@@ -82,7 +87,7 @@ const _respond = (message, status, extra) => {
 		"status": Boolean(status),
 	};
 	if (extra)
-		_.extend(response, extra);
+		_.assignIn(response, extra);
 	return response;
 };
 const respond = (fn, ...rest) => {
@@ -118,12 +123,7 @@ const findAuthCookie = socket =>{
 	return cookies.access;
 };
 const getGuestID = socket => `Guest#${socket.id}`;
-const findRealIp = socket => {
-	let ip = socket.request.connection.remoteAddress.replace(/^::ffff:([\d.]+)$/, '$1');
-	if (cloudflareIp(ip))
-		ip = socket.client.request.headers['cf-connecting-ip'];
-	return ip;
-};
+const findRealIp = require('./real-ip');
 
 Database.connect(function(err) {
 	if (err !== null){
@@ -314,7 +314,7 @@ io.on('connection', function(socket){
 		switch (params.what){
 			case "status":
 				let conns = {};
-				_.each(io.sockets.connected, (v, k) => {
+				_.forEach(io.sockets.connected, (v, k) => {
 					if (k === socket.id && !config.LOCALHOST)
 						return;
 
