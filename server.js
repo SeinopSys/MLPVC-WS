@@ -11,7 +11,6 @@ const
 	express = require('express'),
 	https = require('https'),
 	cors = require('cors'),
-	AcmeDnsCloudflare = require('acme-dns-01-cloudflare'),
 	cloudflareExpress = require('cloudflare-express'),
 	createHash = require('sha.js'),
 	sha256hash = data => createHash('sha256').update(data, 'utf8').digest('hex'),
@@ -32,35 +31,10 @@ app.get('/', function (req, res) {
 });
 
 let server;
-if (config.LOCALHOST === true){
-	server = https.createServer({
-		cert: fs.readFileSync(config.SSL_CERT),
-		key: fs.readFileSync(config.SSL_KEY),
-	}, app);
-}
-else {
-	const cloudflareDns01 = new AcmeDnsCloudflare({
-		email: config.LE_EMAIL,
-		key: config.CF_KEY,
-		verifyPropagation: true
-	});
-	let glx = require('greenlock-express').create({
-		version: 'draft-11',
-		server: config.LE_SERVER,
-		email: config.LE_EMAIL,
-		agreeTos: true,
-		communityMember: true,
-		approveDomains: config.LE_DOMAINS,
-		renewWithin: 2592000e3, // 30 days
-		challenges: { 'dns-01': cloudflareDns01 },
-		challengeType: 'dns-01',
-		store: require('le-store-certbot').create({
-			configDir: require('path').join(require('os').homedir(), 'acme', 'etc'),
-			webrootPath: '/tmp/acme-challenges'
-		})
-	});
-	server = https.createServer(glx.httpsOptions, glx.middleware(app));
-}
+server = https.createServer({
+	cert: fs.readFileSync(config.SSL_CERT),
+	key: fs.readFileSync(config.SSL_KEY),
+}, app);
 server.listen(config.PORT);
 let io = SocketIO.listen(server);
 io.origins(function(origin, callback){

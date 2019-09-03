@@ -2,18 +2,15 @@
   "name": "muffins",
   "version": "1.0.0",
   "dependencies": {
-    "acme-dns-01-cloudflare": "^1.0.2",
     "cloudflare-express": "^1.0.1",
     "cors": "^2.8.0",
     "express": "^4.14.0",
-    "greenlock-express": "^2.0.9",
     "lodash": "^4.17.15",
     "moment-timezone": "^0.5.15",
     "pg": "^7.0.0",
     "sha.js": "^2.4.8",
     "socket.io": "^2.0.0",
-    "range_check": "^1.4.0",
-    "le-store-certbot": "^2.2.3"
+    "range_check": "^1.4.0"
   },
   "author": "SeinopSys <seinopsys@gmail.com> (https://github.com/SeinopSys)",
   "private": true
