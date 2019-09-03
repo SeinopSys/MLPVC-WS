@@ -6,25 +6,22 @@ const
 	pg = require('pg'),
 	_ = require('lodash'),
 	config = require('./config'),
-	moment = require('moment-timezone'),
+	moment = require('./moment-setup'),
 	SocketIO = require('socket.io'),
 	express = require('express'),
 	https = require('https'),
 	cors = require('cors'),
-	cloudflareExpress = require('cloudflare-express'),
 	createHash = require('sha.js'),
 	sha256hash = data => createHash('sha256').update(data, 'utf8').digest('hex'),
 	POST_UPDATES_CHANNEL = 'post-updates',
 	ENTRY_UPDATES_CHANNEL = 'entry-updates',
-	log = text => console.log(moment().format('YYYY-MM-DD HH:mm:ss.SSS')+' | ' + text);
+	log = require('./log');
 
 let Database = new pg.Client(`postgres://${config.DB_USER}:${config.DB_PASS}@${config.DB_HOST}/mlpvc-rr`),
 	app = express();
 
 // CORS
 app.use(cors({ origin: config.ORIGIN_REGEX }));
-
-app.use(cloudflareExpress.restore({update_on_start:true}));
 
 app.get('/', function (req, res) {
 	res.sendStatus(403);
@@ -44,9 +41,6 @@ io.origins(function(origin, callback){
 });
 log(`[Socket.io] Server listening on port ${config.PORT}`);
 
-moment.locale('en');
-moment.tz.add('Europe/Budapest|CET CEST|-10 -20|01010101010101010101010|1BWp0 1qM0 WM0 1qM0 WM0 1qM0 11A0 1o00 11A0 1o00 11A0 1o00 11A0 1qM0 WM0 1qM0 WM0 1qM0 11A0 1o00 11A0 1o00|11e6');
-moment.tz.setDefault('Europe/Budapest');
 const _respond = (message, status, extra) => {
 	let response;
 	if (message === true)
@@ -126,7 +120,7 @@ const
 	authGuest = socket => {
 		socket.emit('auth-guest', _respond({ clientid: socket.id }));
 	};
-io.on('connection', function(socket){
+io.on('connection', async function(socket){
 	//log('> Incoming connection');
 	let User = { id: getGuestID(socket) },
 		isGuest = () => typeof User.role === 'undefined',
@@ -168,7 +162,7 @@ io.on('connection', function(socket){
 		};
 	SocketMeta[socket.id] = {
 		rooms: {},
-		ip: findRealIp(socket),
+		ip: await findRealIp(socket),
 		connected: moment(),
 	};
 	SocketMap[socket.id] = socket;
