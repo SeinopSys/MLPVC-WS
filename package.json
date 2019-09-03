@@ -1,7 +1,6 @@
 {
-  "name": "mlpvc-ws",
+  "name": "muffins",
   "version": "1.0.0",
-  "description": "Websocket server for handling instant notifications on MLPVC-RR",
   "dependencies": {
     "cloudflare-ip": "0.0.7",
     "cors": "^2.8.0",
@@ -16,13 +15,6 @@
     "socket.io": "^2.0.0",
     "underscore": "^1.9.1"
   },
-  "repository": {
-    "type": "git",
-    "url": "SeinopSys/MLPVC-WS"
-  },
   "author": "SeinopSys <seinopsys@gmail.com> (https://github.com/SeinopSys)",
-  "private": true,
-  "engines": {
-    "yarn": "YARN NO LONGER USED - use npm instead."
-  }
+  "private": true
 }

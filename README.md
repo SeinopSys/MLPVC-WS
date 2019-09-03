@@ -1,6 +1,6 @@
-# MLPVC-WS [![Dependency Status](https://www.versioneye.com/user/projects/583a3c9ee7cea00045b8939a/badge.svg?style=flat-square)](https://www.versioneye.com/user/projects/583a3c9ee7cea00045b8939a)
+# Muffins
 
-Web Socket server written in Node.js for [https://github.com/ponydevs/MLPVC-RR](https://github.com/ponydevs/MLPVC-RR) using [Socket.io](http://socket.io/)
+Web Socket server written in Node.js (using [socket.io](http://socket.io/)) for the [MLP Vector Club](https://github.com/MLP-VectorClub)'s website 
 
 ```
 $ sudo npm install -g pm2

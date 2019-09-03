@@ -10,7 +10,7 @@ module.exports = {
 	LE_SERVER: 'staging',
 	LE_EMAIL: '',
 	LE_DOMAINS: ['ws.mlpvector.lc'],
-    CF_KEY: '',
+  CF_KEY: '',
 
 	// For development only
 	LOCALHOST: true,
