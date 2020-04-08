@@ -5,41 +5,38 @@ const
   fetch = require('node-fetch'),
   ipRangeCheck = require('range_check'),
   log = require('./log');
-const cloudflareIpRanges = { ipv4: [], ipv6: [], fetched: false };
+const state = { ranges: [], fetched: false };
 
 const getIPs = () => Promise.all([
   fetch('https://www.cloudflare.com/ips-v4').then(r => r.text()),
   fetch('https://www.cloudflare.com/ips-v6').then(r => r.text()),
 ]).then((data) => {
-  const [ipv4, ipv6] = data.map(list => list.slice(0, -1).split('\n'));
-  return { ipv4, ipv6 };
+  const [v4, v6] = data.map(list => list.slice(0, -1).split('\n'));
+  return [...v4, ...v6];
 });
 
 const fetchPromise = getIPs().then(data => {
-  cloudflareIpRanges.ipv4 = data.ipv4;
-  cloudflareIpRanges.ipv6 = data.ipv6;
-  cloudflareIpRanges.fetched = true;
-  log(`[real-ip] Got ${cloudflareIpRanges.ipv4.length} v4 and ${cloudflareIpRanges.ipv6.length} v6 CloudFlare ranges`);
+  state.ranges = data;
+  state.fetched = true;
+  log(`[real-ip] Got ${state.ranges.length} CloudFlare ranges`);
   return Promise.resolve();
 });
 
 const findRealIp = async socket => {
-  if (!cloudflareIpRanges.fetched) {
+  if (!state.fetched){
     await fetchPromise;
   }
-  let ip = socket.request.connection.remoteAddress.replace(/^::ffff:([\d.]+)$/, '$1');
-  const cfIp = socket.client.request.headers['cf-connecting-ip'];
-  if (typeof cfIp === 'string'){
+  let remoteAddress = ipRangeCheck.storeIP(socket.request.connection.remoteAddress);
+  const cfConnectingIp = ipRangeCheck.storeIP(socket.client.request.headers['cf-connecting-ip']);
+  if (typeof cfConnectingIp === 'string'){
     try {
-      const storedIp = ipRangeCheck.storeIP(cfIp);
-      const ipVersion = `ip${ipRangeCheck.ver(storedIp)}`;
-      if (ipRangeCheck.inRange(ip, cloudflareIpRanges[ipVersion]))
-        ip = cfIp;
+      if (ipRangeCheck.inRange(remoteAddress, state.ranges))
+        remoteAddress = cfConnectingIp;
     } catch (e){
-      console.error(`Invalid CloudFlare IP received: ${cfIp} (${e.toString()})\n${e.stack}`);
+      console.error(`Invalid CloudFlare IP received: ${remoteAddress} (${e.toString()})\n${e.stack}`);
     }
   }
-  return ip;
+  return remoteAddress;
 };
 
 module.exports = findRealIp;
