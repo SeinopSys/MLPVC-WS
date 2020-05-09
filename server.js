@@ -96,7 +96,7 @@ const findRealIp = require('./real-ip');
 
 Database.connect(function(err) {
   if (err !== null){
-    log('[Database] Connection failed, exiting (' + err + ')');
+    log(`[Database] Connection failed, exiting (${err})`);
     return process.exit();
   }
 
@@ -127,7 +127,7 @@ io.on('connection', async function(socket) {
   let User = { id: getGuestID(socket) },
     isGuest = () => typeof User.role === 'undefined',
     userLog = function(msg) {
-      log('[' + User.id + ';' + socket.id + '] ' + msg);
+      log(`[${User.id};${socket.id}] ${msg}`);
     },
     authByCookie = () => {
       let access = findAuthCookie(socket);
@@ -137,7 +137,7 @@ io.on('connection', async function(socket) {
       }
       else if (typeof access === 'string' && access.length){
         let token = sha256hash(access);
-        Database.query('SELECT u.* FROM users u LEFT JOIN sessions s ON s.user_id = u.id WHERE s.token = $1', [token], handleQuery(result => {
+        Database.query('SELECT u.* FROM deviantart_users u LEFT JOIN sessions s ON s.user_id = u.id WHERE s.token = $1', [token], handleQuery(result => {
           if (typeof result[0] !== 'object'){
             authGuest(socket);
             return;
@@ -175,7 +175,7 @@ io.on('connection', async function(socket) {
     if (User.role !== 'server')
       return respond(fn);
 
-    userLog('> Sent notification count to ' + data.user);
+    userLog(`> Sent notification count to ${data.user}`);
 
     data = decodeJson(data);
     pleaseNotify(socket.in(data.user), data.user);
@@ -188,7 +188,7 @@ io.on('connection', async function(socket) {
     Database.query('UPDATE notifications SET read_at = NOW(), read_action = $2 WHERE id = $1', [data.nid, data.action], handleQuery(() => {
       userLog(`> Marked notification #${data.nid} read`);
 
-      Database.query('SELECT u.id FROM users u LEFT JOIN notifications n ON n.recipient_id = u.id WHERE n.id = $1', [data.nid], handleQuery(result => {
+      Database.query('SELECT u.id FROM deviantart_users u LEFT JOIN notifications n ON n.recipient_id = u.id WHERE n.id = $1', [data.nid], handleQuery(result => {
         let userid = result[0].id;
 
         pleaseNotify(socket.in(userid), userid);
@@ -242,7 +242,7 @@ io.on('connection', async function(socket) {
       default:
         return;
     }
-    let msg = action + ' ' + POST_UPDATES_CHANNEL + ' broadcast channel';
+    let msg = `${action} ${POST_UPDATES_CHANNEL} broadcast channel`;
     return respond(fn, msg, 1);
   });
   socket.on(ENTRY_UPDATES_CHANNEL, function(data, fn) {
@@ -275,7 +275,7 @@ io.on('connection', async function(socket) {
   });
   socket.on('devquery', (params, fn) => {
     if (User.role !== 'developer')
-      return respond(fn);
+      return respond(fn, false, false);
 
     params = decodeJson(params);
 
@@ -293,7 +293,7 @@ io.on('connection', async function(socket) {
         respond(fn, { clients });
         break;
       default:
-        respond(fn, `Unknown type ${params.what}`);
+        respond(fn, `Unknown type ${params.what}`, false);
     }
   });
   socket.on('hello', function(params, fn) {
