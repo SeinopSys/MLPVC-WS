@@ -137,7 +137,7 @@ io.on('connection', async function(socket) {
       }
       else if (typeof access === 'string' && access.length){
         let token = sha256hash(access);
-        Database.query('SELECT u.* FROM deviantart_users u LEFT JOIN sessions s ON s.user_id = u.id WHERE s.token = $1', [token], handleQuery(result => {
+        Database.query('SELECT u.* FROM users u LEFT JOIN sessions s ON s.user_id = u.id WHERE s.token = $1', [token], handleQuery(result => {
           if (typeof result[0] !== 'object'){
             authGuest(socket);
             return;
@@ -147,7 +147,10 @@ io.on('connection', async function(socket) {
 
           joinroom(socket, User.id);
           socket.emit('auth', _respond({ name: User.name, clientid: socket.id }));
-          writeMeta('username', User.name);
+          writeMeta('user', {
+            id: User.id,
+            name: User.name,
+          });
           pleaseNotify(socket, User.id);
         }));
       }
