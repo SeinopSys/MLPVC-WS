@@ -10,7 +10,7 @@
     "pg": "^8.3.3",
     "range_check": "^1.4.0",
     "sha.js": "^2.4.8",
-    "socket.io": "^2.3.0"
+    "socket.io": "^2.4.0"
   },
   "scripts": {
     "start": "pm2 start pm2.json",
